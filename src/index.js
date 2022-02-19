@@ -1,55 +1,78 @@
-import { createStore } from "redux"; // 우리의 데이터를 저장할 공간을 만들어줌
-// state 우리의 어플리케이션에서 변경되는 데이터이다
-// readux가 countModifier를 부르고, dispatch는 countModifier로 메세지를 보낸다.
-// counterModifier가 return하는 값이 데이터가 된다.
+/*
+REDUX : DO NOT MUTATE(변형)
+기존의 배열을 변경하지말고 새로운 object를 return해라
+*/
+import { createStore } from "redux";
 
-const add = document.getElementById("add");
-const minus = document.getElementById("minus");
-const number = document.querySelector("span");
-number.innerText = 0;
+const form = document.querySelector("form");
+const input = document.querySelector("input");
+const ul = document.querySelector("ul");
 
-// string으로 action type을 지정하면 오타가 날때 찾기 어렵기 때문에 constant로 지정해서 사용한다.
-// (js가 오타 알려줌)
-const ADD = "ADD";
-const MINUS = "MINUS";
+const ADD_TODO = "ADD_TODO";
+const DELETE_TODO = "DELETE_TODO";
 
-// reducer는 우리의 데이터를 변경하는 함수, reducer가 return하는 값이 데이터의 값이 된다.
-// reducer 함수만 유일하게 데이터를 변경시킬 수 있다. (다른 것들은 state을 변경시킬 수 없다.)
-// 따라서 밖에서 countModifier와 communication 해야한다.
-// communication하는 방법은 countModifier에게 action을 보낸다.
-const countModifier = (count = 0, action) => {
-  //initialize the state
-  // 이 함수내에서 action을 통해 값을 변경한다.
-  // 어떻게 countModifier에게 action을 보낼 수 있을까? -> dispatch
+const addToDo = text => {
+  return {
+    type: DELETE_TODO,
+    text,
+  };
+};
 
-  // reducer 함수는 switch-case문으로 작성하는 것이 좋다. (refactor)
+const delelteoDo = id => {
+  return {
+    type: ADD_TODO,
+    id,
+  };
+};
+
+const reducer = (state = [], action) => {
   switch (action.type) {
-    case ADD:
-      return count + 1;
-    case MINUS:
-      return count - 1;
+    case ADD_TODO:
+      // NEVER MUTATE STATE (새로운 state를 만들어서 반환할 것)
+      // ...은 spread연산자로 배열의 모든 content 값 (es6)
+      return [{ text: action.text, id: Date.now() }, ...state];
+    case DELETE_TODO: // filter method create new array
+      return state.filter(toDo => toDo.id !== action.id);
     default:
-      return count;
+      return state;
   }
 };
 
-const countStore = createStore(countModifier); // store을 만들면 reducer를 넣어줘야함
-// 총 4개의 함수 (dispatch, getState, subscribe, replaceReducer)
-// subscribe은 우리에게 store 안에 있는 변화들을 알 수 있게 해준다.
-console.log(countStore);
+const store = createStore(reducer);
 
-const onChange = () => {
-  number.innerText = countStore.getState();
-};
-countStore.subscribe(onChange);
+store.subscribe(() => console.log(store.getState()));
 
-const handleAdd = () => {
-  countStore.dispatch({ type: ADD });
+const dispatchAddToDo = text => {
+  store.dispatch({ type: ADD_TODO, text });
 };
 
-const handleMinus = () => {
-  countStore.dispatch({ type: MINUS });
+const dispatchDeleteToDo = e => {
+  const id = parseInt(e.target.parentNode.id);
+  store.dispatch({ type: DELETE_TODO, id });
 };
 
-add.addEventListener("click", handleAdd);
-minus.addEventListener("click", handleMinus);
+const paintToDos = () => {
+  const toDos = store.getState();
+  ul.innerHTML = "";
+  toDos.forEach(toDo => {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.innerText = "DEL";
+    btn.addEventListener("click", dispatchDeleteToDo);
+    li.id = toDo.id;
+    li.innerText = toDo.text;
+    li.appendChild(btn);
+    ul.appendChild(li);
+  });
+};
+
+store.subscribe(paintToDos);
+
+const onSubmit = e => {
+  e.preventDefault();
+  const toDo = input.value;
+  input.value = "";
+  dispatchAddToDo(toDo);
+};
+
+form.addEventListener("submit", onSubmit);
